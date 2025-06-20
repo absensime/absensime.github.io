@@ -419,6 +419,42 @@
             });
         }
 
+        // Function to submit via form (CORS bypass)
+        function submitViaForm(jsonPayload, apiUrl) {
+            return new Promise((resolve) => {
+                // Create hidden form
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = apiUrl;
+                form.target = '_blank';
+                form.style.display = 'none';
+
+                // Add JSON data as form field
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'data';
+                input.value = JSON.stringify(jsonPayload);
+                form.appendChild(input);
+
+                // Submit form
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+
+                // Show success message (can't get actual response due to CORS)
+                updateProgress(100);
+                showResult(true, '✅ Request Dikirim', 
+                    'File telah dikirim ke Google Apps Script.\n\nKarena CORS policy, response tidak bisa ditampilkan.\nCek tab baru yang terbuka untuk melihat hasil upload.');
+                
+                hideProgress();
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 Kirim Request';
+                submitBtn.classList.remove('loading');
+
+                resolve();
+            });
+        }
+
         // Function to auto-generate JSON for selected file
         function generateJsonForFile(file, base64Data) {
             const jsonData = {
@@ -509,7 +545,17 @@
                     requestOptions.body = JSON.stringify(jsonPayload);
                 }
 
-                const response = await fetch(apiUrl, requestOptions);
+                // Try direct fetch first, if CORS fails, use form submission method
+                let response;
+                try {
+                    response = await fetch(apiUrl, requestOptions);
+                } catch (corsError) {
+                    if (corsError.message.includes('CORS') || corsError.message.includes('fetch')) {
+                        // Fallback to form submission for CORS bypass
+                        return submitViaForm(jsonPayload, apiUrl);
+                    }
+                    throw corsError;
+                }
                 updateProgress(100);
 
                 const responseText = await response.text();
