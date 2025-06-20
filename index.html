@@ -292,6 +292,18 @@
                 </small>
             </div>
 
+            <div class="form-group">
+                <label for="submitMethod">Metode Pengiriman:</label>
+                <select id="submitMethod" name="submitMethod">
+                    <option value="auto">Auto (Coba Fetch, lalu Form jika CORS)</option>
+                    <option value="form">Form POST (Untuk CORS)</option>
+                    <option value="url">URL Parameter (Untuk GET)</option>
+                </select>
+                <small style="color: #666; font-size: 0.9rem;">
+                    💡 Jika ada error CORS, coba ganti ke metode "Form POST" atau "URL Parameter"
+                </small>
+            </div>
+
             <div class="progress-bar" id="progressBar">
                 <div class="progress-fill" id="progressFill"></div>
             </div>
@@ -417,9 +429,7 @@
                 };
                 reader.onerror = error => reject(error);
             });
-        }
-
-        // Function to submit via form (CORS bypass)
+        }        // Function to submit via form (CORS bypass)
         function submitViaForm(jsonPayload, apiUrl) {
             return new Promise((resolve) => {
                 // Create hidden form
@@ -429,14 +439,12 @@
                 form.target = '_blank';
                 form.style.display = 'none';
 
-                // Add each field separately instead of JSON string
-                Object.keys(jsonPayload).forEach(key => {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = key;
-                    input.value = jsonPayload[key];
-                    form.appendChild(input);
-                });
+                // Send as JSON string in a single parameter
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'data';
+                input.value = JSON.stringify(jsonPayload);
+                form.appendChild(input);
 
                 // Submit form
                 document.body.appendChild(form);
@@ -447,6 +455,30 @@
                 updateProgress(100);
                 showResult(true, '✅ Request Dikirim', 
                     'File telah dikirim ke Google Apps Script.\n\nKarena CORS policy, response tidak bisa ditampilkan.\nCek tab baru yang terbuka untuk melihat hasil upload.');
+                
+                hideProgress();
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 Kirim Request';
+                submitBtn.classList.remove('loading');
+
+                resolve();
+            });
+        }
+
+        // Alternative method using URL parameters for GET request
+        function submitViaUrl(jsonPayload, apiUrl) {
+            return new Promise((resolve) => {
+                // Encode JSON as URL parameter
+                const encodedData = encodeURIComponent(JSON.stringify(jsonPayload));
+                const separator = apiUrl.includes('?') ? '&' : '?';
+                const fullUrl = `${apiUrl}${separator}data=${encodedData}`;
+                
+                // Open in new tab
+                window.open(fullUrl, '_blank');
+
+                updateProgress(100);
+                showResult(true, '✅ Request Dikirim', 
+                    'File telah dikirim ke Google Apps Script melalui URL parameter.\n\nCek tab baru yang terbuka untuk melihat hasil upload.');
                 
                 hideProgress();
                 submitBtn.disabled = false;
@@ -486,15 +518,14 @@
             
             // Auto-generate JSON data
             updateJsonData();
-        }
-
-        // Form submission
+        }        // Form submission
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const method = document.getElementById('method').value;
             const apiUrl = document.getElementById('apiUrl').value.trim();
             const additionalData = document.getElementById('additionalData').value.trim();
+            const submitMethod = document.getElementById('submitMethod').value;
 
             if (!apiUrl) {
                 showResult(false, 'Error', 'URL API tidak boleh kosong!');
@@ -520,6 +551,10 @@
                         jsonPayload = JSON.parse(additionalData);
                     } catch (error) {
                         showResult(false, 'Error', 'Format JSON tidak valid!');
+                        hideProgress();
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '🚀 Kirim Request';
+                        submitBtn.classList.remove('loading');
                         return;
                     }
                 } else if (selectedFileObj) {
@@ -533,8 +568,16 @@
                     };
                 }
 
-                updateProgress(80);
+                updateProgress(50);
 
+                // Choose submission method based on user selection
+                if (submitMethod === 'form') {
+                    return submitViaForm(jsonPayload, apiUrl);
+                } else if (submitMethod === 'url') {
+                    return submitViaUrl(jsonPayload, apiUrl);
+                }
+
+                // Auto method - try fetch first
                 const requestOptions = {
                     method: method,
                     headers: {
@@ -547,14 +590,21 @@
                     requestOptions.body = JSON.stringify(jsonPayload);
                 }
 
+                updateProgress(80);
+
                 // Try direct fetch first, if CORS fails, use form submission method
                 let response;
                 try {
                     response = await fetch(apiUrl, requestOptions);
                 } catch (corsError) {
-                    if (corsError.message.includes('CORS') || corsError.message.includes('fetch')) {
-                        // Fallback to form submission for CORS bypass
-                        return submitViaForm(jsonPayload, apiUrl);
+                    if (corsError.message.includes('CORS') || corsError.message.includes('fetch') || 
+                        corsError.name === 'TypeError') {
+                        // Fallback to alternative methods for CORS bypass
+                        if (method === 'GET') {
+                            return submitViaUrl(jsonPayload, apiUrl);
+                        } else {
+                            return submitViaForm(jsonPayload, apiUrl);
+                        }
                     }
                     throw corsError;
                 }
@@ -580,7 +630,7 @@
 
             } catch (error) {
                 showResult(false, '❌ Error', 
-                    `Terjadi kesalahan: ${error.message}\n\nPastikan URL API benar dan dapat diakses.`);
+                    `Terjadi kesalahan: ${error.message}\n\nPastikan URL API benar dan dapat diakses.\n\nCoba ganti "Metode Pengiriman" ke "Form POST" jika ada masalah CORS.`);
             } finally {
                 hideProgress();
                 submitBtn.disabled = false;
