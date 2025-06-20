@@ -261,7 +261,7 @@
             <div class="form-group">
                 <label for="apiUrl">API URL:</label>
                 <input type="text" id="apiUrl" name="apiUrl" 
-                       value="https://script.google.com/macros/s/AKfycbw9WF0lJY6JBk01bL5YB897MN23aIG4-aT7swHWW9fQ6-2Pl5vAviB2LOo4B1KIZt8jSQ/exec"
+                       value="https://script.google.com/macros/s/AKfycbwFkajWRJDaSISNAbhRDs9eHvKQhGq0scw4PqNxzEmB_a8gkvuz59Jh3Jkad0gxTx7MWg/exec"
                        placeholder="Masukkan URL API">
             </div>
 
@@ -285,22 +285,70 @@
             <div class="form-group">
                 <label for="additionalData">JSON Data (Auto-Generated):</label>
                 <textarea id="additionalData" name="additionalData" rows="6" 
-                         placeholder='Pilih file untuk auto-generate JSON, atau masukkan manual:&#10;{&#10;  "filename": "example.pdf",&#10;  "mimeType": "application/pdf",&#10;  "bytes": "base64_string_here"&#10;}'></textarea>
-                <small style="color: #666; font-size: 0.9rem;">
+                         placeholder='Pilih file untuk auto-generate JSON, atau masukkan manual:&#10;{&#10;  "filename": "example.pdf",&#10;  "mimeType": "application/pdf",&#10;  "bytes": "base64_string_here"&#10;}'></textarea>                <small style="color: #666; font-size: 0.9rem;">
                     💡 JSON akan otomatis di-generate ketika Anda pilih file!<br>
-                    Format sesuai Google Apps Script: <code>filename</code>, <code>mimeType</code>, <code>bytes</code>
+                    Format sesuai Google Apps Script: <code>filename</code>, <code>mimeType</code>, <code>bytes</code><br>
+                    📋 <strong>Gunakan Google Apps Script ini (sudah diperbaiki):</strong><br>
+                    <code style="display: block; background: #f5f5f5; padding: 8px; margin: 4px 0; border-radius: 4px; font-size: 0.8rem;">
+function doPost(e) {<br>
+&nbsp;&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;let data;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// Method 1: Parse from postData.contents (XHR/Fetch)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;if (e.postData && e.postData.contents) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = JSON.parse(e.postData.contents);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// Method 2: Parse from parameter (Form submission)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;else if (e.parameter.data) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = JSON.parse(e.parameter.data);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// Method 3: Parse from form plain text<br>
+&nbsp;&nbsp;&nbsp;&nbsp;else if (e.parameter.json) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = JSON.parse(e.parameter.json);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// Method 4: Direct parameters (fallback)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;else {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = e.parameter;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// Validasi<br>
+&nbsp;&nbsp;&nbsp;&nbsp;if (!data.filename || !data.mimeType || !data.bytes) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return jsonResponse({ status: "error", message: "Missing required fields." });<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// Upload ke Google Drive<br>
+&nbsp;&nbsp;&nbsp;&nbsp;const folder = DriveApp.getFolderById("1tqTdK1ReLTZ_geFpby8z5dGIN2qeAZFm");<br>
+&nbsp;&nbsp;&nbsp;&nbsp;const decoded = Utilities.base64Decode(data.bytes);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;const blob = Utilities.newBlob(decoded, data.mimeType, data.filename);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;const file = folder.createFile(blob);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;return jsonResponse({<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status: "success",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;message: "File uploaded successfully.",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fileName: file.getName(),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fileUrl: file.getUrl()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;});<br>
+&nbsp;&nbsp;} catch (error) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;return jsonResponse({ status: "error", message: error.toString() });<br>
+&nbsp;&nbsp;}<br>
+}<br>
+<br>
+function jsonResponse(obj) {<br>
+&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify(obj))<br>
+&nbsp;&nbsp;&nbsp;&nbsp;.setMimeType(ContentService.MimeType.JSON);<br>
+}
+                    </code>
                 </small>
-            </div>
-
-            <div class="form-group">
+            </div>            <div class="form-group">
                 <label for="submitMethod">Metode Pengiriman:</label>
                 <select id="submitMethod" name="submitMethod">
-                    <option value="auto">Auto (Coba Fetch, lalu Form jika CORS)</option>
-                    <option value="form">Form POST (Untuk CORS)</option>
-                    <option value="url">URL Parameter (Untuk GET)</option>
+                    <option value="xhr">XHR (Seperti Postman - Recommended)</option>
+                    <option value="fetch">Fetch API (Modern)</option>
+                    <option value="form">Form POST (CORS Bypass)</option>
+                    <option value="url">URL Parameter (GET)</option>
                 </select>
                 <small style="color: #666; font-size: 0.9rem;">
-                    💡 Jika ada error CORS, coba ganti ke metode "Form POST" atau "URL Parameter"
+                    💡 Coba "XHR (Seperti Postman)" terlebih dahulu karena mirip dengan cara Postman mengirim data
                 </small>
             </div>
 
@@ -429,39 +477,138 @@
                 };
                 reader.onerror = error => reject(error);
             });
-        }        // Function to submit via form (CORS bypass)
+        }        // Function to submit via form (CORS bypass) - Fixed version
         function submitViaForm(jsonPayload, apiUrl) {
             return new Promise((resolve) => {
-                // Create hidden form
+                // Try to submit as raw POST body instead of form data
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.name = 'upload-frame';
+                document.body.appendChild(iframe);
+                
+                // Create form with proper content type
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = apiUrl;
-                form.target = '_blank';
+                form.target = 'upload-frame';
+                form.enctype = 'text/plain';
                 form.style.display = 'none';
 
-                // Send as JSON string in a single parameter
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'data';
-                input.value = JSON.stringify(jsonPayload);
-                form.appendChild(input);
+                // Send JSON as plain text
+                const textarea = document.createElement('textarea');
+                textarea.name = 'json';
+                textarea.value = JSON.stringify(jsonPayload);
+                form.appendChild(textarea);
 
-                // Submit form
                 document.body.appendChild(form);
-                form.submit();
-                document.body.removeChild(form);
-
-                // Show success message (can't get actual response due to CORS)
-                updateProgress(100);
-                showResult(true, '✅ Request Dikirim', 
-                    'File telah dikirim ke Google Apps Script.\n\nKarena CORS policy, response tidak bisa ditampilkan.\nCek tab baru yang terbuka untuk melihat hasil upload.');
                 
-                hideProgress();
-                submitBtn.disabled = false;
-                submitBtn.textContent = '🚀 Kirim Request';
-                submitBtn.classList.remove('loading');
+                // Handle iframe load
+                iframe.onload = function() {
+                    try {
+                        const response = iframe.contentDocument.body.innerText;
+                        updateProgress(100);
+                        
+                        try {
+                            const jsonResponse = JSON.parse(response);
+                            if (jsonResponse.status === 'success') {
+                                showResult(true, '✅ Request Berhasil', 
+                                    `Response:\n${JSON.stringify(jsonResponse, null, 2)}`);
+                            } else {
+                                showResult(false, '❌ Request Gagal', 
+                                    `Response:\n${JSON.stringify(jsonResponse, null, 2)}`);
+                            }
+                        } catch {
+                            showResult(true, '✅ Request Dikirim', 
+                                `Response:\n${response || 'File berhasil dikirim ke Google Apps Script'}`);
+                        }
+                    } catch (err) {
+                        showResult(true, '✅ Request Dikirim', 
+                            'File telah dikirim ke Google Apps Script.\nTidak dapat membaca response karena CORS policy.');
+                    }
+                    
+                    // Cleanup
+                    setTimeout(() => {
+                        document.body.removeChild(form);
+                        document.body.removeChild(iframe);
+                    }, 1000);
+                    
+                    hideProgress();
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '🚀 Kirim Request';
+                    submitBtn.classList.remove('loading');
+                    resolve();
+                };
 
-                resolve();
+                form.submit();
+            });
+        }        // Function to submit raw JSON via XMLHttpRequest (like Postman)
+        function submitViaXHR(jsonPayload, apiUrl, method = 'POST') {
+            return new Promise((resolve, reject) => {
+                console.log('XHR Request:', {
+                    method: method,
+                    url: apiUrl,
+                    payloadSize: JSON.stringify(jsonPayload).length
+                });
+                
+                const xhr = new XMLHttpRequest();
+                
+                xhr.open(method, apiUrl, true);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        updateProgress(100);
+                        
+                        console.log('XHR Response:', {
+                            status: xhr.status,
+                            responseText: xhr.responseText
+                        });
+                        
+                        let responseData;
+                        try {
+                            responseData = JSON.parse(xhr.responseText);
+                            responseData = JSON.stringify(responseData, null, 2);
+                        } catch {
+                            responseData = xhr.responseText;
+                        }
+
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            showResult(true, '✅ Request Berhasil', 
+                                `Status: ${xhr.status}\n\nResponse:\n${responseData}`);
+                        } else {
+                            showResult(false, '❌ Request Gagal', 
+                                `Status: ${xhr.status}\n\nResponse:\n${responseData}`);
+                        }
+                        
+                        hideProgress();
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '🚀 Kirim Request';
+                        submitBtn.classList.remove('loading');
+                        
+                        resolve();
+                    }
+                };
+
+                xhr.onerror = function() {
+                    // If XHR fails due to CORS, fallback to form method
+                    console.log('XHR failed, falling back to form method');
+                    submitViaForm(jsonPayload, apiUrl).then(resolve);
+                };
+
+                try {
+                    const payload = JSON.stringify(jsonPayload);
+                    console.log('Sending payload:', payload.substring(0, 200) + '...');
+                    
+                    if (method === 'GET') {
+                        xhr.send();
+                    } else {
+                        xhr.send(payload);
+                    }
+                } catch (error) {
+                    console.error('XHR send error:', error);
+                    // Fallback to form method if send fails
+                    submitViaForm(jsonPayload, apiUrl).then(resolve);
+                }
             });
         }
 
@@ -566,18 +713,18 @@
                         mimeType: selectedFileObj.type || 'application/octet-stream',
                         bytes: base64File
                     };
-                }
-
-                updateProgress(50);
+                }                updateProgress(50);
 
                 // Choose submission method based on user selection
-                if (submitMethod === 'form') {
+                if (submitMethod === 'xhr') {
+                    return submitViaXHR(jsonPayload, apiUrl, method);
+                } else if (submitMethod === 'form') {
                     return submitViaForm(jsonPayload, apiUrl);
                 } else if (submitMethod === 'url') {
                     return submitViaUrl(jsonPayload, apiUrl);
                 }
 
-                // Auto method - try fetch first
+                // Fetch method
                 const requestOptions = {
                     method: method,
                     headers: {
@@ -592,19 +739,15 @@
 
                 updateProgress(80);
 
-                // Try direct fetch first, if CORS fails, use form submission method
+                // Try direct fetch
                 let response;
                 try {
                     response = await fetch(apiUrl, requestOptions);
                 } catch (corsError) {
                     if (corsError.message.includes('CORS') || corsError.message.includes('fetch') || 
                         corsError.name === 'TypeError') {
-                        // Fallback to alternative methods for CORS bypass
-                        if (method === 'GET') {
-                            return submitViaUrl(jsonPayload, apiUrl);
-                        } else {
-                            return submitViaForm(jsonPayload, apiUrl);
-                        }
+                        // Fallback to XHR method
+                        return submitViaXHR(jsonPayload, apiUrl, method);
                     }
                     throw corsError;
                 }
@@ -626,11 +769,14 @@
                 } else {
                     showResult(false, '❌ Request Gagal', 
                         `Status: ${response.status} ${response.statusText}\n\nResponse:\n${responseData}`);
-                }
-
-            } catch (error) {
+                }            } catch (error) {
+                console.error('Submission error:', error);
+                console.log('JSON Payload:', jsonPayload);
+                console.log('Submit Method:', submitMethod);
+                console.log('API URL:', apiUrl);
+                
                 showResult(false, '❌ Error', 
-                    `Terjadi kesalahan: ${error.message}\n\nPastikan URL API benar dan dapat diakses.\n\nCoba ganti "Metode Pengiriman" ke "Form POST" jika ada masalah CORS.`);
+                    `Terjadi kesalahan: ${error.message}\n\nPastikan URL API benar dan dapat diakses.\n\nCoba ganti "Metode Pengiriman" ke "XHR (Seperti Postman)" atau "Form POST" jika ada masalah CORS.\n\nDebug Info:\n- Method: ${submitMethod}\n- Payload size: ${JSON.stringify(jsonPayload).length} characters`);
             } finally {
                 hideProgress();
                 submitBtn.disabled = false;
