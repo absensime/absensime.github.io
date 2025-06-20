@@ -1,1 +1,545 @@
-halo 
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API File Uploader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 1rem;
+        }
+
+        input[type="text"], 
+        select, 
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        input[type="text"]:focus, 
+        select:focus, 
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .file-upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: rgba(102, 126, 234, 0.05);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-upload-area:hover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .file-upload-area.dragover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.15);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        .file-types {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .selected-file {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+            display: none;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .remove-file {
+            margin-left: auto;
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .remove-file:hover {
+            background: #ff3742;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e1e5e9;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 15px 0;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 12px;
+            display: none;
+        }
+
+        .result.success {
+            background: rgba(46, 204, 113, 0.1);
+            border: 2px solid #2ecc71;
+            color: #27ae60;
+        }
+
+        .result.error {
+            background: rgba(231, 76, 60, 0.1);
+            border: 2px solid #e74c3c;
+            color: #c0392b;
+        }
+
+        .result-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .result-content {
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .loading {
+            animation: pulse 1.5s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 API File Uploader</h1>
+        
+        <form id="uploadForm">
+            <div class="form-group">
+                <label for="method">HTTP Method:</label>
+                <select id="method" name="method">
+                    <option value="POST">POST</option>
+                    <option value="GET">GET</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="apiUrl">API URL:</label>
+                <input type="text" id="apiUrl" name="apiUrl" 
+                       value="https://script.google.com/macros/s/AKfycbw9WF0lJY6JBk01bL5YB897MN23aIG4-aT7swHWW9fQ6-2Pl5vAviB2LOo4B1KIZt8jSQ/exec"
+                       placeholder="Masukkan URL API">
+            </div>
+
+            <div class="form-group">
+                <label>Upload File:</label>
+                <div class="file-upload-area" id="fileUploadArea">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">Klik atau drag & drop file di sini</div>
+                    <div class="file-types">Mendukung semua tipe file (PDF, DOC, XLS, IMG, ZIP, dll.)</div>
+                    <input type="file" id="fileInput" name="file" accept="*/*">
+                </div>
+                <div class="selected-file" id="selectedFile">
+                    <div class="file-info">
+                        <span class="file-name" id="fileName"></span>
+                        <span class="file-size" id="fileSize"></span>
+                        <button type="button" class="remove-file" id="removeFile">❌ Hapus</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="additionalData">JSON Data (Auto-Generated):</label>
+                <textarea id="additionalData" name="additionalData" rows="6" 
+                         placeholder='Pilih file untuk auto-generate JSON, atau masukkan manual:&#10;{&#10;  "filename": "example.pdf",&#10;  "mimeType": "application/pdf",&#10;  "bytes": "base64_string_here"&#10;}'></textarea>
+                <small style="color: #666; font-size: 0.9rem;">
+                    💡 JSON akan otomatis di-generate ketika Anda pilih file!<br>
+                    Format sesuai Google Apps Script: <code>filename</code>, <code>mimeType</code>, <code>bytes</code>
+                </small>
+            </div>
+
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <button type="submit" class="btn" id="submitBtn">
+                🚀 Kirim Request
+            </button>
+        </form>
+
+        <div class="result" id="result">
+            <div class="result-title" id="resultTitle"></div>
+            <div class="result-content" id="resultContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const fileUploadArea = document.getElementById('fileUploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const selectedFile = document.getElementById('selectedFile');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const removeFile = document.getElementById('removeFile');
+        const form = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const result = document.getElementById('result');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultContent = document.getElementById('resultContent');
+
+        let selectedFileObj = null;
+
+        // File upload area events
+        fileUploadArea.addEventListener('click', () => fileInput.click());
+        fileUploadArea.addEventListener('dragover', handleDragOver);
+        fileUploadArea.addEventListener('dragleave', handleDragLeave);
+        fileUploadArea.addEventListener('drop', handleFileDrop);
+        fileInput.addEventListener('change', handleFileSelect);
+        removeFile.addEventListener('click', clearSelectedFile);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            fileUploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+        }
+
+        function handleFileDrop(e) {
+            e.preventDefault();
+            fileUploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelection(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                handleFileSelection(files[0]);
+            }
+        }
+
+        function handleFileSelection(file) {
+            selectedFileObj = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            selectedFile.style.display = 'block';
+            fileUploadArea.style.display = 'none';
+        }
+
+        function clearSelectedFile() {
+            selectedFileObj = null;
+            fileInput.value = '';
+            selectedFile.style.display = 'none';
+            fileUploadArea.style.display = 'block';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showResult(success, title, content) {
+            result.className = success ? 'result success' : 'result error';
+            resultTitle.textContent = title;
+            resultContent.textContent = content;
+            result.style.display = 'block';
+        }
+
+        function hideResult() {
+            result.style.display = 'none';
+        }
+
+        function showProgress() {
+            progressBar.style.display = 'block';
+            progressFill.style.width = '0%';
+        }
+
+        function updateProgress(percent) {
+            progressFill.style.width = percent + '%';
+        }
+
+        function hideProgress() {
+            progressBar.style.display = 'none';
+        }
+
+        // Function to convert file to base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    // Remove data:image/jpeg;base64, prefix
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Function to auto-generate JSON for selected file
+        function generateJsonForFile(file, base64Data) {
+            const jsonData = {
+                filename: file.name,
+                mimeType: file.type || 'application/octet-stream',
+                bytes: base64Data
+            };
+            return JSON.stringify(jsonData, null, 2);
+        }
+
+        // Update additional data textarea when file is selected
+        function updateJsonData() {
+            if (selectedFileObj) {
+                fileToBase64(selectedFileObj).then(base64Data => {
+                    const jsonData = generateJsonForFile(selectedFileObj, base64Data);
+                    document.getElementById('additionalData').value = jsonData;
+                });
+            }
+        }
+
+        function handleFileSelection(file) {
+            selectedFileObj = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            selectedFile.style.display = 'block';
+            fileUploadArea.style.display = 'none';
+            
+            // Auto-generate JSON data
+            updateJsonData();
+        }
+
+        // Form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const method = document.getElementById('method').value;
+            const apiUrl = document.getElementById('apiUrl').value.trim();
+            const additionalData = document.getElementById('additionalData').value.trim();
+
+            if (!apiUrl) {
+                showResult(false, 'Error', 'URL API tidak boleh kosong!');
+                return;
+            }
+
+            if (!selectedFileObj && !additionalData) {
+                showResult(false, 'Error', 'Pilih file atau masukkan data JSON!');
+                return;
+            }
+
+            hideResult();
+            showProgress();
+            submitBtn.disabled = true;
+            submitBtn.textContent = '⏳ Mengirim...';
+            submitBtn.classList.add('loading');
+
+            try {
+                let jsonPayload = {};
+
+                if (additionalData) {
+                    try {
+                        jsonPayload = JSON.parse(additionalData);
+                    } catch (error) {
+                        showResult(false, 'Error', 'Format JSON tidak valid!');
+                        return;
+                    }
+                } else if (selectedFileObj) {
+                    // If no additional data but file selected, generate JSON
+                    updateProgress(20);
+                    const base64File = await fileToBase64(selectedFileObj);
+                    jsonPayload = {
+                        filename: selectedFileObj.name,
+                        mimeType: selectedFileObj.type || 'application/octet-stream',
+                        bytes: base64File
+                    };
+                }
+
+                updateProgress(80);
+
+                const requestOptions = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+
+                // Only add body for non-GET requests
+                if (method !== 'GET') {
+                    requestOptions.body = JSON.stringify(jsonPayload);
+                }
+
+                const response = await fetch(apiUrl, requestOptions);
+                updateProgress(100);
+
+                const responseText = await response.text();
+                let responseData;
+                
+                try {
+                    responseData = JSON.parse(responseText);
+                    responseData = JSON.stringify(responseData, null, 2);
+                } catch {
+                    responseData = responseText;
+                }
+
+                if (response.ok) {
+                    showResult(true, '✅ Request Berhasil', 
+                        `Status: ${response.status} ${response.statusText}\n\nResponse:\n${responseData}`);
+                } else {
+                    showResult(false, '❌ Request Gagal', 
+                        `Status: ${response.status} ${response.statusText}\n\nResponse:\n${responseData}`);
+                }
+
+            } catch (error) {
+                showResult(false, '❌ Error', 
+                    `Terjadi kesalahan: ${error.message}\n\nPastikan URL API benar dan dapat diakses.`);
+            } finally {
+                hideProgress();
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🚀 Kirim Request';
+                submitBtn.classList.remove('loading');
+            }
+        });
+    </script>
+</body>
+</html>
