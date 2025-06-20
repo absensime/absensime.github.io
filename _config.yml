@@ -1,0 +1,4 @@
+theme: jekyll-theme-minimal
+title: Google Drive File Uploader
+description: Upload files directly to Google Drive using Google Apps Script API
+show_downloads: false

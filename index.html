@@ -1,9 +1,21 @@
 <!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
+<html lang="en">
+<head>    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API File Uploader</title>
+    <title>Google Drive File Uploader - Upload Files Directly to Google Drive</title>
+    <meta name="description" content="Upload files directly to Google Drive using Google Apps Script API. Bypass CORS restrictions with our production-ready HTML uploader.">
+    <meta name="keywords" content="file upload, google drive, apps script, api, cors bypass, drag drop upload">
+    <meta name="author" content="File Uploader">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph Tags -->
+    <meta property="og:title" content="Google Drive File Uploader">
+    <meta property="og:description" content="Upload files directly to Google Drive using Google Apps Script API">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
     <style>
         * {
             margin: 0;
@@ -19,17 +31,37 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
+            line-height: 1.6;
         }
 
-        .container {
+        .main-container {
+            display: flex;
+            gap: 30px;
+            max-width: 1400px;
+            width: 100%;
+            align-items: flex-start;
+        }
+
+        .uploader-container {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             border-radius: 20px;
             padding: 40px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            max-width: 600px;
-            width: 100%;
+            width: 600px;
             border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .docs-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 500px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-height: 80vh;
+            overflow-y: auto;
         }
 
         h1 {
@@ -41,6 +73,20 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #555;
+            margin: 20px 0 10px 0;
+            font-size: 1.2rem;
         }
 
         .form-group {
@@ -241,168 +287,298 @@
         .loading {
             animation: pulse 1.5s infinite;
         }
+
+        .docs-container p {
+            margin-bottom: 15px;
+            color: #666;
+        }
+
+        .docs-container ol, .docs-container ul {
+            margin: 15px 0;
+            padding-left: 20px;
+        }
+
+        .docs-container li {
+            margin-bottom: 8px;
+            color: #666;
+        }
+
+        .code-block {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+
+        .warning {
+            background: rgba(255, 193, 7, 0.1);
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #856404;
+        }
+
+        .info {
+            background: rgba(23, 162, 184, 0.1);
+            border: 2px solid #17a2b8;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #0c5460;
+        }
+
+        .success {
+            background: rgba(40, 167, 69, 0.1);
+            border: 2px solid #28a745;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #155724;
+        }
+
+        small {
+            font-size: 0.85rem;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .uploader-container,
+            .docs-container {
+                width: 100%;
+                max-width: 600px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🚀 API File Uploader</h1>
-        
-        <form id="uploadForm">
-            <div class="form-group">
-                <label for="method">HTTP Method:</label>
-                <select id="method" name="method">
-                    <option value="POST">POST</option>
-                    <option value="GET">GET</option>
-                    <option value="PUT">PUT</option>
-                    <option value="DELETE">DELETE</option>
-                </select>
-            </div>            <div class="form-group">
-                <label for="apiUrl">API URL:</label>
-                <input type="text" id="apiUrl" name="apiUrl" 
-                       value="https://script.google.com/macros/s/AKfycbwFkajWRJDaSISNAbhRDs9eHvKQhGq0scw4PqNxzEmB_a8gkvuz59Jh3Jkad0gxTx7MWg/exec"
-                       placeholder="Masukkan URL API">                <small style="color: #e74c3c; font-size: 0.9rem;">
-                    ⚠️ <strong>PENTING:</strong> URL ini mungkin sudah tidak valid (Error 403).<br>
-                    <strong>🤔 Mengapa Postman berhasil tapi browser tidak?</strong><br>
-                    • Postman <strong>tidak</strong> mengikuti CORS policy (bukan browser)<br>
-                    • Browser memblokir request cross-origin ke Google Apps Script<br>
-                    • Solusi: Gunakan metode "Postman-like" yang akan membuka response di tab baru<br><br>
-                    <strong>Pastikan Google Apps Script sudah di-deploy dengan:</strong><br>
-                    • Execute as: "Me" • Who has access: "Anyone"<br>
-                    Lalu salin URL baru ke field ini.
-                </small>
-            </div>
-
-            <div class="form-group">
-                <label>Upload File:</label>
-                <div class="file-upload-area" id="fileUploadArea">
-                    <div class="upload-icon">📁</div>
-                    <div class="upload-text">Klik atau drag & drop file di sini</div>
-                    <div class="file-types">Mendukung semua tipe file (PDF, DOC, XLS, IMG, ZIP, dll.)</div>
-                    <input type="file" id="fileInput" name="file" accept="*/*">
+    <div class="main-container">
+        <!-- Upload Form Container -->
+        <div class="uploader-container">
+            <h1>🚀 File Uploader to Google Drive</h1>
+            
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label for="method">HTTP Method:</label>
+                    <select id="method" name="method">
+                        <option value="POST">POST</option>
+                        <option value="GET">GET</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
                 </div>
-                <div class="selected-file" id="selectedFile">
-                    <div class="file-info">
-                        <span class="file-name" id="fileName"></span>
-                        <span class="file-size" id="fileSize"></span>
-                        <button type="button" class="remove-file" id="removeFile">❌ Hapus</button>
+
+                <div class="form-group">
+                    <label for="apiUrl">Google Apps Script URL:</label>
+                    <input type="text" id="apiUrl" name="apiUrl" 
+                           value=""
+                           placeholder="Paste your Google Apps Script Web App URL here">
+                    <small>
+                        ⚠️ <strong>Paste your deployed Google Apps Script URL here.</strong><br>
+                        Follow the setup guide on the right to get your URL.
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label>Upload File:</label>
+                    <div class="file-upload-area" id="fileUploadArea">
+                        <div class="upload-icon">📁</div>
+                        <div class="upload-text">Click or drag & drop file here</div>
+                        <div class="file-types">Supports all file types (PDF, DOC, XLS, IMG, ZIP, etc.)</div>
+                        <input type="file" id="fileInput" name="file" accept="*/*">
+                    </div>
+                    <div class="selected-file" id="selectedFile">
+                        <div class="file-info">
+                            <span class="file-name" id="fileName"></span>
+                            <span class="file-size" id="fileSize"></span>
+                            <button type="button" class="remove-file" id="removeFile">❌ Remove</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label for="additionalData">JSON Data (Auto-Generated):</label>
-                <textarea id="additionalData" name="additionalData" rows="6" 
-                         placeholder='Pilih file untuk auto-generate JSON, atau masukkan manual:&#10;{&#10;  "filename": "example.pdf",&#10;  "mimeType": "application/pdf",&#10;  "bytes": "base64_string_here"&#10;}'></textarea>                <small style="color: #666; font-size: 0.9rem;">
-                    💡 JSON akan otomatis di-generate ketika Anda pilih file!<br>
-                    Format sesuai Google Apps Script: <code>filename</code>, <code>mimeType</code>, <code>bytes</code><br>                    📋 <strong>Update Google Apps Script Anda dengan kode ini:</strong><br>
-                    <code style="display: block; background: #f5f5f5; padding: 8px; margin: 4px 0; border-radius: 4px; font-size: 0.8rem;">
-function doPost(e) {<br>
-&nbsp;&nbsp;try {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;let data;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;// Debug: Log semua yang diterima<br>
-&nbsp;&nbsp;&nbsp;&nbsp;console.log('Received postData:', e.postData);<br>
-&nbsp;&nbsp;&nbsp;&nbsp;console.log('Received parameters:', e.parameter);<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;// Method 1: Raw POST body (dari XHR/Fetch)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;if (e.postData && e.postData.contents) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;try {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = JSON.parse(e.postData.contents);<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} catch (err) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// Jika bukan JSON, coba sebagai form data<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;const postDataStr = e.postData.contents;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (postDataStr.includes('postman_data=')) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;const jsonStr = decodeURIComponent(postDataStr.split('postman_data=')[1]);<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = JSON.parse(jsonStr);<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
-&nbsp;&nbsp;&nbsp;&nbsp;}<br>
-&nbsp;&nbsp;&nbsp;&nbsp;// Method 2: Form parameter (dari form submission)<br>
-&nbsp;&nbsp;&nbsp;&nbsp;else if (e.parameter.postman_data) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = JSON.parse(e.parameter.postman_data);<br>
-&nbsp;&nbsp;&nbsp;&nbsp;}<br>
-&nbsp;&nbsp;&nbsp;&nbsp;// Method 3: Legacy parameter<br>
-&nbsp;&nbsp;&nbsp;&nbsp;else if (e.parameter.data) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = JSON.parse(e.parameter.data);<br>
-&nbsp;&nbsp;&nbsp;&nbsp;}<br>
-&nbsp;&nbsp;&nbsp;&nbsp;// Method 4: Direct parameters<br>
-&nbsp;&nbsp;&nbsp;&nbsp;else {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = e.parameter;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;}<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;// Validasi data<br>
-&nbsp;&nbsp;&nbsp;&nbsp;if (!data || !data.filename || !data.mimeType || !data.bytes) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return jsonResponse({ <br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status: "error", <br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;message: "Missing required fields: filename, mimeType, bytes",<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;received: data<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;});<br>
-&nbsp;&nbsp;&nbsp;&nbsp;}<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;// Upload ke Google Drive<br>
-&nbsp;&nbsp;&nbsp;&nbsp;const folder = DriveApp.getFolderById("1tqTdK1ReLTZ_geFpby8z5dGIN2qeAZFm");<br>
-&nbsp;&nbsp;&nbsp;&nbsp;const decoded = Utilities.base64Decode(data.bytes);<br>
-&nbsp;&nbsp;&nbsp;&nbsp;const blob = Utilities.newBlob(decoded, data.mimeType, data.filename);<br>
-&nbsp;&nbsp;&nbsp;&nbsp;const file = folder.createFile(blob);<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;return jsonResponse({<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status: "success",<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;message: "File uploaded successfully via web form!",<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fileName: file.getName(),<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fileUrl: file.getUrl(),<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fileId: file.getId()<br>
-&nbsp;&nbsp;&nbsp;&nbsp;});<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<br>
-&nbsp;&nbsp;} catch (error) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;return jsonResponse({ <br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status: "error", <br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;message: error.toString(),<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;stack: error.stack<br>
-&nbsp;&nbsp;&nbsp;&nbsp;});<br>
-&nbsp;&nbsp;}<br>
-}<br>
-<br>
-function jsonResponse(obj) {<br>
-&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify(obj, null, 2))<br>
-&nbsp;&nbsp;&nbsp;&nbsp;.setMimeType(ContentService.MimeType.JSON);<br>
+                <div class="form-group">
+                    <label for="additionalData">JSON Data (Auto-Generated):</label>
+                    <textarea id="additionalData" name="additionalData" rows="4" 
+                             placeholder='JSON will be auto-generated when you select a file'
+                             readonly></textarea>
+                    <small>
+                        💡 JSON is automatically generated when you select a file!<br>
+                        Format: <code>filename</code>, <code>mimeType</code>, <code>bytes</code>
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="submitMethod">Upload Method:</label>
+                    <select id="submitMethod" name="submitMethod">
+                        <option value="postman">Form POST (Recommended)</option>
+                        <option value="xhr">XHR (Will fail due to CORS)</option>
+                        <option value="fetch">Fetch API (Will fail due to CORS)</option>
+                        <option value="url">URL Parameter (GET)</option>
+                    </select>
+                    <small>
+                        💡 <strong>Use "Form POST"</strong> - opens response in new tab like Postman.<br>
+                        Other methods will fail due to CORS protection.
+                    </small>
+                </div>
+
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+
+                <button type="submit" class="btn" id="submitBtn">
+                    🚀 Upload to Google Drive
+                </button>
+            </form>
+
+            <div class="result" id="result">
+                <div class="result-title" id="resultTitle"></div>
+                <div class="result-content" id="resultContent"></div>
+            </div>
+        </div>
+
+        <!-- Documentation Container -->
+        <div class="docs-container">
+            <h2>📖 Setup Guide</h2>
+            
+            <h3>🔧 Step 1: Create Google Apps Script</h3>
+            <ol>
+                <li>Go to <a href="https://script.google.com" target="_blank">script.google.com</a></li>
+                <li>Click "New Project"</li>
+                <li>Replace the default code with the script below</li>
+                <li>Save the project (Ctrl+S)</li>
+            </ol>
+
+            <div class="code-block">function doPost(e) {
+  try {
+    let data;
+    
+    // Parse incoming data
+    if (e.postData && e.postData.contents) {
+      try {
+        data = JSON.parse(e.postData.contents);
+      } catch (err) {
+        const postDataStr = e.postData.contents;
+        if (postDataStr.includes('postman_data=')) {
+          const jsonStr = decodeURIComponent(postDataStr.split('postman_data=')[1]);
+          data = JSON.parse(jsonStr);
+        }
+      }
+    } else if (e.parameter.postman_data) {
+      data = JSON.parse(e.parameter.postman_data);
+    } else if (e.parameter.data) {
+      data = JSON.parse(e.parameter.data);
+    } else {
+      data = e.parameter;
+    }
+    
+    // Validate required fields
+    if (!data || !data.filename || !data.mimeType || !data.bytes) {
+      return jsonResponse({ 
+        status: "error", 
+        message: "Missing required fields: filename, mimeType, bytes",
+        received: data
+      });
+    }
+    
+    // Upload to Google Drive
+    const folder = DriveApp.getFolderById("YOUR_FOLDER_ID_HERE");
+    const decoded = Utilities.base64Decode(data.bytes);
+    const blob = Utilities.newBlob(decoded, data.mimeType, data.filename);
+    const file = folder.createFile(blob);
+    
+    return jsonResponse({
+      status: "success",
+      message: "File uploaded successfully!",
+      fileName: file.getName(),
+      fileUrl: file.getUrl(),
+      fileId: file.getId()
+    });
+    
+  } catch (error) {
+    return jsonResponse({ 
+      status: "error", 
+      message: error.toString(),
+      stack: error.stack
+    });
+  }
 }
-                    </code>
-                    <br><strong style="color: #e74c3c;">🚨 LANGKAH DEPLOY:</strong><br>
-                    1. Buka <a href="https://script.google.com" target="_blank">script.google.com</a><br>
-                    2. Paste script di atas → Save<br>
-                    3. Klik "Deploy" → "New deployment"<br>
-                    4. Type: "Web app"<br>
-                    5. Execute as: <strong>"Me"</strong><br>
-                    6. Who has access: <strong>"Anyone"</strong><br>
-                    7. Deploy → Copy URL baru ke field API URL di atas!
-                </small>
-            </div>            <div class="form-group">
-                <label for="submitMethod">Metode Pengiriman:</label>
-                <select id="submitMethod" name="submitMethod">
-                    <option value="postman">Postman-like (Form ke Tab Baru)</option>
-                    <option value="form">Form POST (CORS Bypass)</option>
-                    <option value="xhr">XHR (akan CORS error)</option>
-                    <option value="fetch">Fetch API (akan CORS error)</option>
-                    <option value="url">URL Parameter (GET)</option>
-                </select>
-                <small style="color: #666; font-size: 0.9rem;">
-                    💡 <strong>Gunakan "Postman-like"</strong> - ini akan mengirim data seperti Postman dan membuka response di tab baru.<br>
-                    Metode ini paling mirip dengan cara kerja Postman.
-                </small>
+
+function jsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj, null, 2))
+    .setMimeType(ContentService.MimeType.JSON);
+}</div>
+
+            <div class="warning">
+                <strong>⚠️ Important:</strong> Replace <code>YOUR_FOLDER_ID_HERE</code> with your actual Google Drive folder ID.
             </div>
 
-            <div class="progress-bar" id="progressBar">
-                <div class="progress-fill" id="progressFill"></div>
+            <h3>📂 Step 2: Get Google Drive Folder ID</h3>
+            <ol>
+                <li>Open <a href="https://drive.google.com" target="_blank">Google Drive</a></li>
+                <li>Create or navigate to your target folder</li>
+                <li>Copy the folder ID from the URL:<br>
+                    <code>https://drive.google.com/drive/folders/<strong>FOLDER_ID_HERE</strong></code></li>
+                <li>Replace <code>YOUR_FOLDER_ID_HERE</code> in the script</li>
+            </ol>
+
+            <h3>🚀 Step 3: Deploy as Web App</h3>
+            <ol>
+                <li>Click <strong>"Deploy"</strong> → <strong>"New deployment"</strong></li>
+                <li>Click the gear icon ⚙️ and select <strong>"Web app"</strong></li>
+                <li>Set <strong>Execute as:</strong> "Me"</li>
+                <li>Set <strong>Who has access:</strong> "Anyone"</li>
+                <li>Click <strong>"Deploy"</strong></li>
+                <li>Copy the <strong>Web app URL</strong></li>
+                <li>Paste the URL in the form on the left</li>
+            </ol>
+
+            <div class="success">
+                <strong>✅ Success!</strong> Your file uploader is now ready to use.
             </div>
 
-            <button type="submit" class="btn" id="submitBtn">
-                🚀 Kirim Request
-            </button>
-        </form>
+            <h3>🔍 How It Works</h3>
+            <p>This tool uploads files directly to Google Drive using:</p>
+            <ul>
+                <li><strong>Google Apps Script:</strong> Server-side processing</li>
+                <li><strong>Form POST:</strong> Bypasses CORS restrictions</li>
+                <li><strong>Base64 Encoding:</strong> Handles binary files</li>
+                <li><strong>Drive API:</strong> Secure file storage</li>
+            </ul>
 
-        <div class="result" id="result">
-            <div class="result-title" id="resultTitle"></div>
-            <div class="result-content" id="resultContent"></div>
+            <h3>🛠️ Troubleshooting</h3>
+            <div class="info">
+                <strong>Q: Why does Postman work but browser doesn't?</strong><br>
+                A: Browsers enforce CORS policy, Postman doesn't. This tool uses Form POST to bypass CORS safely.
+            </div>
+
+            <div class="info">
+                <strong>Q: Getting 403 Forbidden error?</strong><br>
+                A: Your Google Apps Script URL is invalid or not properly deployed. Redeploy and get a new URL.
+            </div>
+
+            <div class="info">
+                <strong>Q: File not appearing in Drive?</strong><br>
+                A: Check the folder ID in your script and ensure the folder exists and is accessible.
+            </div>
+
+            <h3>🔒 Security Notes</h3>
+            <ul>
+                <li>Files are uploaded directly to your Google Drive</li>
+                <li>No files are stored on intermediate servers</li>
+                <li>Apps Script runs under your Google account</li>
+                <li>Access can be restricted to specific users</li>
+            </ul>
         </div>
     </div>
 
@@ -538,19 +714,18 @@ function jsonResponse(obj) {<br>
                 
                 // Submit form
                 form.submit();
-                
-                // Show immediate success since we can't read the response
+                  // Show immediate success since we can't read the response
                 setTimeout(() => {
                     updateProgress(100);
-                    showResult(true, '✅ Request Dikirim ke Google Apps Script', 
-                        'File telah dikirim seperti Postman!\n\nCek tab baru yang terbuka untuk melihat response dari Google Apps Script.\n\nJika tidak ada tab baru yang terbuka, kemungkinan popup blocker aktif.');
+                    showResult(true, '✅ Request Sent to Google Apps Script', 
+                        'File has been sent like Postman!\n\nCheck the new tab that opened to see the response from Google Apps Script.\n\nIf no new tab opened, popup blocker might be active.');
                     
                     // Cleanup
                     document.body.removeChild(form);
                     
                     hideProgress();
                     submitBtn.disabled = false;
-                    submitBtn.textContent = '🚀 Kirim Request';
+                    submitBtn.textContent = '🚀 Upload to Google Drive';
                     submitBtn.classList.remove('loading');
                     resolve();
                 }, 1000);
@@ -584,19 +759,17 @@ function jsonResponse(obj) {<br>
                             responseData = JSON.stringify(responseData, null, 2);
                         } catch {
                             responseData = xhr.responseText;
-                        }
-
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            showResult(true, '✅ Request Berhasil', 
+                        }                        if (xhr.status >= 200 && xhr.status < 300) {
+                            showResult(true, '✅ Request Successful', 
                                 `Status: ${xhr.status}\n\nResponse:\n${responseData}`);
                         } else {
-                            showResult(false, '❌ Request Gagal', 
+                            showResult(false, '❌ Request Failed', 
                                 `Status: ${xhr.status}\n\nResponse:\n${responseData}`);
                         }
                         
                         hideProgress();
                         submitBtn.disabled = false;
-                        submitBtn.textContent = '🚀 Kirim Request';
+                        submitBtn.textContent = '🚀 Upload to Google Drive';
                         submitBtn.classList.remove('loading');
                         
                         resolve();
@@ -640,15 +813,13 @@ function jsonResponse(obj) {<br>
                 const fullUrl = `${apiUrl}${separator}data=${encodedData}`;
                 
                 // Open in new tab
-                window.open(fullUrl, '_blank');
-
-                updateProgress(100);
-                showResult(true, '✅ Request Dikirim', 
-                    'File telah dikirim ke Google Apps Script melalui URL parameter.\n\nCek tab baru yang terbuka untuk melihat hasil upload.');
+                window.open(fullUrl, '_blank');                updateProgress(100);
+                showResult(true, '✅ Request Sent', 
+                    'File has been sent to Google Apps Script via URL parameter.\n\nCheck the new tab that opened to see the upload result.');
                 
                 hideProgress();
                 submitBtn.disabled = false;
-                submitBtn.textContent = '🚀 Kirim Request';
+                submitBtn.textContent = '🚀 Upload to Google Drive';
                 submitBtn.classList.remove('loading');
 
                 resolve();
@@ -691,35 +862,32 @@ function jsonResponse(obj) {<br>
             const method = document.getElementById('method').value;
             const apiUrl = document.getElementById('apiUrl').value.trim();
             const additionalData = document.getElementById('additionalData').value.trim();
-            const submitMethod = document.getElementById('submitMethod').value;
-
-            if (!apiUrl) {
-                showResult(false, 'Error', 'URL API tidak boleh kosong!');
+            const submitMethod = document.getElementById('submitMethod').value;            if (!apiUrl) {
+                showResult(false, 'Error', 'API URL cannot be empty!');
                 return;
             }
 
             if (!selectedFileObj && !additionalData) {
-                showResult(false, 'Error', 'Pilih file atau masukkan data JSON!');
+                showResult(false, 'Error', 'Please select a file or enter JSON data!');
                 return;
             }
 
             hideResult();
             showProgress();
             submitBtn.disabled = true;
-            submitBtn.textContent = '⏳ Mengirim...';
+            submitBtn.textContent = '⏳ Uploading...';
             submitBtn.classList.add('loading');
 
             try {
                 let jsonPayload = {};
 
-                if (additionalData) {
-                    try {
+                if (additionalData) {                    try {
                         jsonPayload = JSON.parse(additionalData);
                     } catch (error) {
-                        showResult(false, 'Error', 'Format JSON tidak valid!');
+                        showResult(false, 'Error', 'Invalid JSON format!');
                         hideProgress();
                         submitBtn.disabled = false;
-                        submitBtn.textContent = '🚀 Kirim Request';
+                        submitBtn.textContent = '🚀 Upload to Google Drive';
                         submitBtn.classList.remove('loading');
                         return;
                     }
@@ -780,22 +948,19 @@ function jsonResponse(obj) {<br>
                     responseData = JSON.stringify(responseData, null, 2);
                 } catch {
                     responseData = responseText;
-                }
-
-                if (response.ok) {
-                    showResult(true, '✅ Request Berhasil', 
+                }                if (response.ok) {
+                    showResult(true, '✅ Request Successful', 
                         `Status: ${response.status} ${response.statusText}\n\nResponse:\n${responseData}`);
                 } else {
-                    showResult(false, '❌ Request Gagal', 
+                    showResult(false, '❌ Request Failed', 
                         `Status: ${response.status} ${response.statusText}\n\nResponse:\n${responseData}`);
-                }            } catch (error) {
+                }} catch (error) {
                 console.error('Submission error:', error);
                 console.log('JSON Payload:', jsonPayload);
                 console.log('Submit Method:', submitMethod);
                 console.log('API URL:', apiUrl);
-                
-                showResult(false, '❌ Error', 
-                    `Terjadi kesalahan: ${error.message}\n\nPastikan URL API benar dan dapat diakses.\n\nCoba ganti "Metode Pengiriman" ke "XHR (Seperti Postman)" atau "Form POST" jika ada masalah CORS.\n\nDebug Info:\n- Method: ${submitMethod}\n- Payload size: ${JSON.stringify(jsonPayload).length} characters`);
+                  showResult(false, '❌ Error', 
+                    `An error occurred: ${error.message}\n\nMake sure the API URL is correct and accessible.\n\nTry changing "Upload Method" to "XHR" or "Form POST" if there are CORS issues.\n\nDebug Info:\n- Method: ${submitMethod}\n- Payload size: ${JSON.stringify(jsonPayload).length} characters`);
             } finally {
                 hideProgress();
                 submitBtn.disabled = false;
