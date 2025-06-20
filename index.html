@@ -260,12 +260,14 @@
                 <label for="apiUrl">API URL:</label>
                 <input type="text" id="apiUrl" name="apiUrl" 
                        value="https://script.google.com/macros/s/AKfycbwFkajWRJDaSISNAbhRDs9eHvKQhGq0scw4PqNxzEmB_a8gkvuz59Jh3Jkad0gxTx7MWg/exec"
-                       placeholder="Masukkan URL API">
-                <small style="color: #e74c3c; font-size: 0.9rem;">
+                       placeholder="Masukkan URL API">                <small style="color: #e74c3c; font-size: 0.9rem;">
                     ⚠️ <strong>PENTING:</strong> URL ini mungkin sudah tidak valid (Error 403).<br>
-                    Pastikan Google Apps Script sudah di-deploy sebagai "Web app" dengan:<br>
-                    • Execute as: "Me"<br>
-                    • Who has access: "Anyone"<br>
+                    <strong>🤔 Mengapa Postman berhasil tapi browser tidak?</strong><br>
+                    • Postman <strong>tidak</strong> mengikuti CORS policy (bukan browser)<br>
+                    • Browser memblokir request cross-origin ke Google Apps Script<br>
+                    • Solusi: Gunakan metode "Postman-like" yang akan membuka response di tab baru<br><br>
+                    <strong>Pastikan Google Apps Script sudah di-deploy dengan:</strong><br>
+                    • Execute as: "Me" • Who has access: "Anyone"<br>
                     Lalu salin URL baru ke field ini.
                 </small>
             </div>
@@ -292,33 +294,49 @@
                 <textarea id="additionalData" name="additionalData" rows="6" 
                          placeholder='Pilih file untuk auto-generate JSON, atau masukkan manual:&#10;{&#10;  "filename": "example.pdf",&#10;  "mimeType": "application/pdf",&#10;  "bytes": "base64_string_here"&#10;}'></textarea>                <small style="color: #666; font-size: 0.9rem;">
                     💡 JSON akan otomatis di-generate ketika Anda pilih file!<br>
-                    Format sesuai Google Apps Script: <code>filename</code>, <code>mimeType</code>, <code>bytes</code><br>
-                    📋 <strong>Gunakan Google Apps Script ini (sudah diperbaiki):</strong><br>
+                    Format sesuai Google Apps Script: <code>filename</code>, <code>mimeType</code>, <code>bytes</code><br>                    📋 <strong>Update Google Apps Script Anda dengan kode ini:</strong><br>
                     <code style="display: block; background: #f5f5f5; padding: 8px; margin: 4px 0; border-radius: 4px; font-size: 0.8rem;">
 function doPost(e) {<br>
 &nbsp;&nbsp;try {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;let data;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;// Method 1: Parse from postData.contents (XHR/Fetch)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// Debug: Log semua yang diterima<br>
+&nbsp;&nbsp;&nbsp;&nbsp;console.log('Received postData:', e.postData);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;console.log('Received parameters:', e.parameter);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// Method 1: Raw POST body (dari XHR/Fetch)<br>
 &nbsp;&nbsp;&nbsp;&nbsp;if (e.postData && e.postData.contents) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = JSON.parse(e.postData.contents);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;try {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = JSON.parse(e.postData.contents);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;} catch (err) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// Jika bukan JSON, coba sebagai form data<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;const postDataStr = e.postData.contents;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (postDataStr.includes('postman_data=')) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;const jsonStr = decodeURIComponent(postDataStr.split('postman_data=')[1]);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = JSON.parse(jsonStr);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
 &nbsp;&nbsp;&nbsp;&nbsp;}<br>
-&nbsp;&nbsp;&nbsp;&nbsp;// Method 2: Parse from parameter (Form submission)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// Method 2: Form parameter (dari form submission)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;else if (e.parameter.postman_data) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = JSON.parse(e.parameter.postman_data);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// Method 3: Legacy parameter<br>
 &nbsp;&nbsp;&nbsp;&nbsp;else if (e.parameter.data) {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = JSON.parse(e.parameter.data);<br>
 &nbsp;&nbsp;&nbsp;&nbsp;}<br>
-&nbsp;&nbsp;&nbsp;&nbsp;// Method 3: Parse from form plain text<br>
-&nbsp;&nbsp;&nbsp;&nbsp;else if (e.parameter.json) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = JSON.parse(e.parameter.json);<br>
-&nbsp;&nbsp;&nbsp;&nbsp;}<br>
-&nbsp;&nbsp;&nbsp;&nbsp;// Method 4: Direct parameters (fallback)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// Method 4: Direct parameters<br>
 &nbsp;&nbsp;&nbsp;&nbsp;else {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;data = e.parameter;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;}<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
-&nbsp;&nbsp;&nbsp;&nbsp;// Validasi<br>
-&nbsp;&nbsp;&nbsp;&nbsp;if (!data.filename || !data.mimeType || !data.bytes) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return jsonResponse({ status: "error", message: "Missing required fields." });<br>
+&nbsp;&nbsp;&nbsp;&nbsp;// Validasi data<br>
+&nbsp;&nbsp;&nbsp;&nbsp;if (!data || !data.filename || !data.mimeType || !data.bytes) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return jsonResponse({ <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status: "error", <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;message: "Missing required fields: filename, mimeType, bytes",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;received: data<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;});<br>
 &nbsp;&nbsp;&nbsp;&nbsp;}<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;// Upload ke Google Drive<br>
@@ -329,17 +347,23 @@ function doPost(e) {<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<br>
 &nbsp;&nbsp;&nbsp;&nbsp;return jsonResponse({<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status: "success",<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;message: "File uploaded successfully.",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;message: "File uploaded successfully via web form!",<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fileName: file.getName(),<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fileUrl: file.getUrl()<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fileUrl: file.getUrl(),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;fileId: file.getId()<br>
 &nbsp;&nbsp;&nbsp;&nbsp;});<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<br>
 &nbsp;&nbsp;} catch (error) {<br>
-&nbsp;&nbsp;&nbsp;&nbsp;return jsonResponse({ status: "error", message: error.toString() });<br>
+&nbsp;&nbsp;&nbsp;&nbsp;return jsonResponse({ <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status: "error", <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;message: error.toString(),<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;stack: error.stack<br>
+&nbsp;&nbsp;&nbsp;&nbsp;});<br>
 &nbsp;&nbsp;}<br>
 }<br>
 <br>
 function jsonResponse(obj) {<br>
-&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify(obj))<br>
+&nbsp;&nbsp;return ContentService.createTextOutput(JSON.stringify(obj, null, 2))<br>
 &nbsp;&nbsp;&nbsp;&nbsp;.setMimeType(ContentService.MimeType.JSON);<br>
 }
                     </code>
@@ -355,14 +379,15 @@ function jsonResponse(obj) {<br>
             </div>            <div class="form-group">
                 <label for="submitMethod">Metode Pengiriman:</label>
                 <select id="submitMethod" name="submitMethod">
-                    <option value="form">Form POST (CORS Bypass - Recommended)</option>
-                    <option value="xhr">XHR (Seperti Postman - akan CORS error)</option>
+                    <option value="postman">Postman-like (Form ke Tab Baru)</option>
+                    <option value="form">Form POST (CORS Bypass)</option>
+                    <option value="xhr">XHR (akan CORS error)</option>
                     <option value="fetch">Fetch API (akan CORS error)</option>
                     <option value="url">URL Parameter (GET)</option>
                 </select>
                 <small style="color: #666; font-size: 0.9rem;">
-                    💡 <strong>Gunakan "Form POST"</strong> karena Google Apps Script memiliki CORS protection.<br>
-                    XHR dan Fetch akan selalu error CORS, tapi form submission akan berhasil bypass.
+                    💡 <strong>Gunakan "Postman-like"</strong> - ini akan mengirim data seperti Postman dan membuka response di tab baru.<br>
+                    Metode ini paling mirip dengan cara kerja Postman.
                 </small>
             </div>
 
@@ -491,107 +516,44 @@ function jsonResponse(obj) {<br>
                 };
                 reader.onerror = error => reject(error);
             });
-        }        // Function to submit via form (CORS bypass) - Improved version
+        }        // Function to submit via form (CORS bypass) - Postman-like method
         function submitViaForm(jsonPayload, apiUrl) {
             return new Promise((resolve) => {
-                console.log('Using form submission method');
+                console.log('Using form submission method (Postman-like)');
                 
-                // Method 1: Try iframe submission
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.name = 'upload-frame-' + Date.now();
-                document.body.appendChild(iframe);
-                
+                // Create a form that posts directly to a new window/tab
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = apiUrl;
-                form.target = iframe.name;
-                form.enctype = 'application/x-www-form-urlencoded';
+                form.target = '_blank'; // Open in new tab like Postman result
                 form.style.display = 'none';
 
-                // Send JSON as URL-encoded parameter
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'data';
-                input.value = JSON.stringify(jsonPayload);
-                form.appendChild(input);
+                // Create textarea for JSON data (raw body like Postman)
+                const textarea = document.createElement('textarea');
+                textarea.name = 'postman_data';
+                textarea.value = JSON.stringify(jsonPayload);
+                form.appendChild(textarea);
 
                 document.body.appendChild(form);
                 
-                let responseReceived = false;
+                // Submit form
+                form.submit();
                 
-                // Handle iframe load
-                iframe.onload = function() {
-                    if (responseReceived) return;
-                    responseReceived = true;
-                    
-                    try {
-                        const response = iframe.contentDocument.body.innerText || iframe.contentDocument.body.textContent;
-                        updateProgress(100);
-                        
-                        console.log('Form response:', response);
-                        
-                        try {
-                            const jsonResponse = JSON.parse(response);
-                            if (jsonResponse.status === 'success') {
-                                showResult(true, '✅ Upload Berhasil!', 
-                                    `File berhasil diupload ke Google Drive!\n\n${JSON.stringify(jsonResponse, null, 2)}`);
-                            } else {
-                                showResult(false, '❌ Upload Gagal', 
-                                    `${JSON.stringify(jsonResponse, null, 2)}`);
-                            }
-                        } catch {
-                            // If response is not JSON, assume success
-                            showResult(true, '✅ Upload Berhasil!', 
-                                `File berhasil dikirim ke Google Apps Script.\n\nResponse: ${response || 'Upload completed successfully'}`);
-                        }
-                    } catch (err) {
-                        console.log('Cannot read iframe response due to CORS, assuming success');
-                        showResult(true, '✅ Request Dikirim', 
-                            'File telah dikirim ke Google Apps Script.\nTidak dapat membaca response karena CORS policy, tapi request berhasil dikirim.');
-                    }
+                // Show immediate success since we can't read the response
+                setTimeout(() => {
+                    updateProgress(100);
+                    showResult(true, '✅ Request Dikirim ke Google Apps Script', 
+                        'File telah dikirim seperti Postman!\n\nCek tab baru yang terbuka untuk melihat response dari Google Apps Script.\n\nJika tidak ada tab baru yang terbuka, kemungkinan popup blocker aktif.');
                     
                     // Cleanup
-                    setTimeout(() => {
-                        if (document.body.contains(form)) document.body.removeChild(form);
-                        if (document.body.contains(iframe)) document.body.removeChild(iframe);
-                    }, 2000);
+                    document.body.removeChild(form);
                     
                     hideProgress();
                     submitBtn.disabled = false;
                     submitBtn.textContent = '🚀 Kirim Request';
                     submitBtn.classList.remove('loading');
                     resolve();
-                };
-
-                // Fallback timeout
-                setTimeout(() => {
-                    if (!responseReceived) {
-                        responseReceived = true;
-                        updateProgress(100);
-                        showResult(true, '✅ Request Dikirim (Timeout)', 
-                            'Request telah dikirim ke Google Apps Script.\nResponse timeout - ini normal untuk CORS protected endpoints.');
-                        
-                        // Cleanup
-                        if (document.body.contains(form)) document.body.removeChild(form);
-                        if (document.body.contains(iframe)) document.body.removeChild(iframe);
-                        
-                        hideProgress();
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = '🚀 Kirim Request';
-                        submitBtn.classList.remove('loading');
-                        resolve();
-                    }
-                }, 10000); // 10 second timeout
-
-                try {
-                    form.submit();
-                    console.log('Form submitted successfully');
-                } catch (submitError) {
-                    console.error('Form submission error:', submitError);
-                    // If form submission fails, try direct method
-                    submitViaUrl(jsonPayload, apiUrl).then(resolve);
-                }
+                }, 1000);
             });
         }// Function to submit raw JSON via XMLHttpRequest (like Postman)
         function submitViaXHR(jsonPayload, apiUrl, method = 'POST') {
@@ -770,10 +732,10 @@ function jsonResponse(obj) {<br>
                         mimeType: selectedFileObj.type || 'application/octet-stream',
                         bytes: base64File
                     };
-                }                updateProgress(50);
-
-                // Choose submission method based on user selection
-                if (submitMethod === 'xhr') {
+                }                updateProgress(50);                // Choose submission method based on user selection
+                if (submitMethod === 'postman') {
+                    return submitViaForm(jsonPayload, apiUrl);
+                } else if (submitMethod === 'xhr') {
                     return submitViaXHR(jsonPayload, apiUrl, method);
                 } else if (submitMethod === 'form') {
                     return submitViaForm(jsonPayload, apiUrl);
